@@ -7,7 +7,7 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tensorflow.keras.layers import Input, Conv2D, DepthwiseConv2D, BatchNormalization, Dropout, Activation, MaxPooling2D, Flatten, Dense, Add
+from tensorflow.keras.layers import Input, Conv2D, SeparableConv2D, BatchNormalization, Dropout, Activation, MaxPooling2D, Flatten, Dense, Add
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.inception_v3 import preprocess_input, decode_predictions
 print(tf.__version__)
@@ -48,18 +48,18 @@ def build_model2():
     Conv2D(32, kernel_size=(3, 3), strides=(2, 2), activation="relu", padding='same'),
     BatchNormalization(),
 
-    DepthwiseConv2D(kernel_size=(3, 3), strides=(2, 2), activation="relu", padding='same', use_bias=False),
+    SeparableConv2D(64, kernel_size=(3, 3), strides=(2, 2), activation="relu", padding='same'),
     BatchNormalization(),
-    DepthwiseConv2D(kernel_size=(3, 3), strides=(2, 2), activation="relu", padding='same', use_bias=False),
+    SeparableConv2D(128, kernel_size=(3, 3), strides=(2, 2), activation="relu", padding='same'),
     BatchNormalization(),
 
-    DepthwiseConv2D(kernel_size=(3, 3), activation="relu", padding='same', use_bias=False),
+    SeparableConv2D(128, kernel_size=(3, 3), activation="relu", padding='same'),
     BatchNormalization(),
-    DepthwiseConv2D(kernel_size=(3, 3), activation="relu", padding='same', use_bias=False),
+    SeparableConv2D(128, kernel_size=(3, 3), activation="relu", padding='same'),
     BatchNormalization(),
-    DepthwiseConv2D(kernel_size=(3, 3), activation="relu", padding='same', use_bias=False),
+    SeparableConv2D(128, kernel_size=(3, 3), activation="relu", padding='same'),
     BatchNormalization(),
-    DepthwiseConv2D(kernel_size=(3, 3), activation="relu", padding='same', use_bias=False),
+    SeparableConv2D(128, kernel_size=(3, 3), activation="relu", padding='same'),
     BatchNormalization(),
     MaxPooling2D(pool_size=(4, 4), strides=(4, 4)),
     
@@ -93,7 +93,7 @@ def build_model3():
 
   # Res Block 1
   y = Conv2D(128, kernel_size=(1,1), strides=(4, 4), name='SkipConvA')(y)
-  y = Add()((x,y))
+  y = Add()([x,y])
 
   # Block 4
   x = Conv2D(128, kernel_size=(3, 3), activation='relu', padding='same')(y)
@@ -106,7 +106,7 @@ def build_model3():
   x = Dropout(0.2)(x)
 
   # Res Block 2
-  y = Add()((x,y))
+  y = Add()([x,y])
 
   # Block 6
   x = Conv2D(128, kernel_size=(3, 3), activation='relu', padding='same')(y)
@@ -119,9 +119,9 @@ def build_model3():
   x = Dropout(0.2)(x)
 
   # Res Block 3
-  y = Add()((x,y))
+  y = Add()([x,y])
   
-  x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
+  x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(y)
 
   # Dense layers
   x = Flatten()(x)
@@ -209,39 +209,39 @@ if __name__ == '__main__':
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
     model1.summary()
-    # train_hist = model1.fit(train_images, train_labels, 
-    #                         validation_data=(val_images, val_labels), # or use `validation_split=0.1`
-    #                         epochs=(50))
-    # model1.save('model1.h5')
+    train_hist = model1.fit(train_images, train_labels, 
+                            validation_data=(val_images, val_labels), # or use `validation_split=0.1`
+                            epochs=(50))
+    model1.save('model1.h5')
 
     # Testing Model1
-    # image_path = 'test_image_dog.png'
-    # img = image.load_img(image_path, target_size=(32, 32))
-    # img_array = image.img_to_array(img)
-    # img_array = np.expand_dims(img_array, axis=0)
-    # img_array = preprocess_input(img_array)
+    image_path = 'test_image_dog.png'
+    img = image.load_img(image_path, target_size=(32, 32))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = preprocess_input(img_array)
 
-    # # Make predictions
-    # predictions = model1.predict(img_array)
+    # Make predictions
+    predictions = model1.predict(img_array)
 
-    # # Get the predicted class index
-    # top3_classes = np.argsort(predictions[0])[::-1][:3]
-    # for i, class_index in enumerate(top3_classes):
-    #   class_name = class_names[class_index]
-    #   probability = predictions[0, class_index]
-    #   print(f"Top {i + 1}: {class_name} ({probability:.2f})")
+    # Get the predicted class index
+    top3_classes = np.argsort(predictions[0])[::-1][:3]
+    for i, class_index in enumerate(top3_classes):
+      class_name = class_names[class_index]
+      probability = predictions[0, class_index]
+      print(f"Top {i + 1}: {class_name} ({probability:.2f})")
 
-    ## Build, compile, and train model 2 (DS Convolutions)
+    # Build, compile, and train model 2 (DS Convolutions)
     model2 = build_model2()
     model2.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
     model2.summary()
-    # train_hist = model2.fit(train_images, train_labels, 
-    #                         validation_data=(val_images, val_labels), # or use `validation_split=0.1`
-    #                         epochs=50)
-    # model2.save('model2.h5')
-    ## Repeat for model 3 and your best sub-50k params model
+    train_hist = model2.fit(train_images, train_labels, 
+                            validation_data=(val_images, val_labels), # or use `validation_split=0.1`
+                            epochs=50)
+    model2.save('model2.h5')
+    # Repeat for model 3 and your best sub-50k params model
   
     model3 = build_model3()
     
@@ -250,10 +250,10 @@ if __name__ == '__main__':
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
     model3.summary()
-    # train_hist = model3.fit(train_images, train_labels, 
-    #                         validation_data=(val_images, val_labels), # or use `validation_split=0.1`
-    #                         epochs=(50))
-    # model3.save('model3.h5')
+    train_hist = model3.fit(train_images, train_labels, 
+                            validation_data=(val_images, val_labels), # or use `validation_split=0.1`
+                            epochs=(50))
+    model3.save('model3.h5')
 
     model50k = build_model50k()
     
@@ -262,9 +262,8 @@ if __name__ == '__main__':
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
     model50k.summary()
-    # train_hist = model50k.fit(train_images, train_labels, 
-    #                         validation_data=(val_images, val_labels), # or use `validation_split=0.1`
-    #                         epochs=(50))
-    # model50k.save('best_model.h5')
-
+    train_hist = model50k.fit(train_images, train_labels, 
+                            validation_data=(val_images, val_labels), # or use `validation_split=0.1`
+                            epochs=(50))
+    model50k.save('best_model.h5')
 # %%
